@@ -1,0 +1,22 @@
+{
+ "content": null,
+ "creation": "2025-07-23 23:21:17.631604",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-07-23 23:21:17.631604",
+ "modified_by": "Administrator",
+ "module": "Am Health",
+ "name": "am-patient-history",
+ "owner": "Administrator",
+ "page_name": "am-patient-history",
+ "roles": [
+  {
+   "role": "All"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0
+}
