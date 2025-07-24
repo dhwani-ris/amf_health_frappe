@@ -1,0 +1,90 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "User",
+  "enabled": 0,
+  "modified": "2025-07-24 16:28:04.771371",
+  "module": "Am Health",
+  "name": "User",
+  "script": "frappe.ui.form.on('User', {\n\trefresh(frm) {\n\t\tfrm.set_intro(\"If anyone is given 'Doctor' role add them as \")\n\t}\n})",
+  "view": "Form"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Patient",
+  "enabled": 1,
+  "modified": "2025-07-24 17:24:14.967605",
+  "module": "Am Health",
+  "name": "Patient",
+  "script": "frappe.ui.form.on('Patient', {\n\trefresh(frm) {\n\t    frm.remove_custom_button(\"Medical Record\", \"Create\")\n\t    frm.remove_custom_button(\"Patient History\", \"View\");\n\t    frm.remove_custom_button(\"Patient Progress\", \"View\");\n\t       frm.remove_custom_button(\"Verify ABHA\", \"ABDM\")\n\t       frm.remove_custom_button(\"Create ABHA\", \"ABDM\")\n\t    if(!frm.doc.__islocal){\n\t       \n    \t\tfrm.add_custom_button('Create Patient Registration', () => {\n    \t\t\t// Create a new Vital Signs doc and set the patient field\n                \tfrappe.route_options = {\n                \t\t'patient': frm.doc.name,\n                \t\t'company': frm.doc.company,\n                \t\t'custom_age': frm.doc.age_html\n                \t};\n                \tfrappe.new_doc('Vital Signs');\n    \t\t}); // This places the button under the \"Create\" dropdown\n\t    }\n\t    \n\t}\n})",
+  "view": "Form"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Vital Signs",
+  "enabled": 1,
+  "modified": "2025-07-24 16:28:04.873380",
+  "module": "Am Health",
+  "name": "Vital Signs",
+  "script": "frappe.ui.form.on('Vital Signs', {\n\trefresh(frm) {\n\t    // Check for already consulted\n\t    if (frm.doc.custom_is_consulted == \"Yes\") {\n\t        frm.set_intro(\"This Form Is Already Consulted\");\n\t        return;\n\t    }\n\n\t    // Check if date exceeded 1 week\n\t    if (frm.doc.signs_date) {\n\t        const regDate = frappe.datetime.str_to_obj(frm.doc.signs_date);\n\t        const today = frappe.datetime.now_date();\n\t        const todayObj = frappe.datetime.str_to_obj(today);\n\t        const diffInDays = frappe.datetime.get_diff(todayObj, regDate);\n\t        if (diffInDays > 7) {\n\t            frm.set_intro(\n\t                \"⚠️ This registration is more than 1 week old. Patient must re-register.<br> Click on the Patient id below and Add a new consultation\",\n\t                'red'\n\t            );\n\t            return\n\t        }\n\t    }\n\n\t    // Do not show Add Consultation if already linked\n\t    if (frm.doc.encounter || frm.doc.__islocal || frm.doc.docstatus !== 1) {\n\t        return;\n\t    }\n        \n\t    // Show Add Consultation button\n\t    frm.add_custom_button('Add Consultation', () => {\n\t        if (!frm.doc.patient) {\n\t            frappe.throw(__('Please select patient'));\n\t        }\n\n\t        frappe.route_options = {\n\t            'patient': frm.doc.patient,\n\t            'company': frm.doc.company,\n\t            'custom_patient_registration': frm.doc.name,\n\t            'custom_op_number': frm.doc.custom_op_number\n\t        };\n\n\t        frappe.new_doc('Patient Encounter');\n\t    });\n\t}\n});\n",
+  "view": "Form"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Patient",
+  "enabled": 1,
+  "modified": "2025-07-24 16:28:04.807530",
+  "module": "Am Health",
+  "name": "Patient List",
+  "script": "frappe.listview_settings[\"Patient\"] = {\n\thide_name_column: true,\n\thide_name_filter: true,\n}",
+  "view": "List"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Patient Encounter",
+  "enabled": 1,
+  "modified": "2025-07-24 16:28:04.900563",
+  "module": "Am Health",
+  "name": "Patient Encounter List",
+  "script": "frappe.listview_settings[\"Patient Encounter\"] = {\n\thide_name_column: true,\n\thide_name_filter: true,\n\tonload: function(listview) {\n        const $buttons = $(listview.page.wrapper).find(\".page-actions .btn-primary\");\n\n        $buttons.each(function () {\n            const buttonText = $(this).text().trim();\n            if (buttonText.includes(\"Add\") || buttonText === \"View\") {\n                $(this).hide();\n            }\n        });\n    }\n}\n",
+  "view": "List"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Vital Signs",
+  "enabled": 1,
+  "modified": "2025-07-24 16:28:04.857711",
+  "module": "Am Health",
+  "name": "Vital Signs List",
+  "script": "frappe.listview_settings[\"Vital Signs\"] = {\n    hide_name_column: true,\n    hide_name_filter: true,\n\n    onload: function(listview) {\n        const $buttons = $(listview.page.wrapper).find(\".page-actions .btn-primary\");\n\n        $buttons.each(function () {\n            const buttonText = $(this).text().trim();\n            if (buttonText.includes(\"Add\")) {\n                $(this).hide();\n            }\n        });\n    },\n\n    get_indicator: function (doc) {\n        const today = frappe.datetime.get_today();\n        const diff_days = frappe.datetime.get_diff(today, doc.signs_date);\n\n        // Expired: more than 5 days old\n        if (diff_days > 7 && doc.custom_is_consulted != \"Yes\") {\n            return [__(\"Expired\"), \"orange\", [\"signs_date\", \"<\", frappe.datetime.add_days(today, -7)]];\n        }\n\n        // Consulted\n        if (doc.custom_is_consulted === \"Yes\") {\n            return [__(\"Consulted\"), \"green\", [\"custom_is_consulted\", \"=\", \"Yes\"]];\n        }\n\n        // Pending\n        return [__(\"Pending Consultation\"), \"red\", [\"custom_is_consulted\", \"=\", \"No\"]];\n    }\n};\n",
+  "view": "List"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Medicine Prescription Form",
+  "enabled": 1,
+  "modified": "2025-07-24 16:28:04.841556",
+  "module": "Am Health",
+  "name": "Medicine Prescription Form List",
+  "script": "frappe.listview_settings[\"Medicine Prescription Form\"] = {\n\thide_name_column: true,\n\thide_name_filter: true,\n\tonload: function(listview) {\n        const $buttons = $(listview.page.wrapper).find(\".page-actions .btn-primary\");\n\n        $buttons.each(function () {\n            const buttonText = $(this).text().trim();\n            if (buttonText.includes(\"Add\")) {\n                $(this).hide();\n            }\n        });\n    }\n}\n",
+  "view": "List"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Patient Encounter",
+  "enabled": 1,
+  "modified": "2025-07-24 16:28:04.745131",
+  "module": "Am Health",
+  "name": "Patient Encounter",
+  "script": "frappe.ui.form.on('Patient Encounter', {\n\trefresh(frm) {\n\t    if (frm.doc.patient) {\n            // Add \"View Patient History\" custom button\n            frm.add_custom_button(('View Patient History'), () => {\n                frappe.route_options = { 'patient': frm.doc.patient };\n\t\t\t\tfrappe.set_route('am_patient_history');\n            });\n\n            // Check if the patient has any previous registrations (other than current)\n            frappe.call({\n                method: \"frappe.client.get_list\",\n                args: {\n                    doctype: \"Vital Signs\",\n                    filters: [\n                        [\"patient\", \"=\", frm.doc.patient],\n                        [\"name\", \"!=\", frm.doc.custom_patient_registration]\n                    ],\n                    limit: 1\n                },\n                callback: function (res) {\n                    if (res.message && res.message.length > 0) {\n                        frm.set_value(\"custom_case_type\", \"Old Case\");\n                    } else {\n                        frm.set_value(\"custom_case_type\", \"New Case\");\n                    }\n                }\n            });\n        }\n\n        // Remove default buttons if form is not new\n\t    if (!frm.doc.__islocal) {\n\t       frm.remove_custom_button(\"Schedule Admission\");\n\t       frm.remove_custom_button(\"Refer Patient\", \"Create\");\n\t       frm.remove_custom_button(\"Medical Record\", \"Create\");\n\t       frm.remove_custom_button(\"Clinical Procedure\", \"Create\");\n\t       frm.remove_custom_button(\"Clinical Note\", \"Create\");\n\t       frm.remove_custom_button(\"Nursing Tasks\", \"Create\");\n\t       frm.remove_custom_button(\"Vital Signs\", \"Create\");\n\t       frm.remove_custom_button(\"Patient History\", \"View\");\n\t    }\n\t}\n});\n",
+  "view": "Form"
+ }
+]
